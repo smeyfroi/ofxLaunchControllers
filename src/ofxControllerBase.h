@@ -111,7 +111,7 @@ class ofxControllerBase : public ofxMidiListener {
 
             int controlNum;
             TypeCode typeCode;            // 0 for unassigned, 1 for bool, 2 for float, 3 for int, 4 for radio
-            atomic <bool> bUpdate;
+            std::atomic <bool> bUpdate;
             int buttonMode;                 // 0 toggle, 1 momentary, 2 radio
 
             ofParameter <glm::vec3> * pParamv3;

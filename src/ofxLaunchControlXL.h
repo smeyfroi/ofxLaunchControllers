@@ -6,8 +6,8 @@
 class ofxLaunchControlXL : public ofxControllerBase {
 public:
 	ofxLaunchControlXL();
-	void setup();
-	
+  void setup( int id=-1, int channel=9 );
+
     void fader( int index, ofParameter<float> & param, float min, float max );
     void fader( int index, ofParameter<int> & param, int min, int max );
     void fader( int index, ofParameter<float> & param );

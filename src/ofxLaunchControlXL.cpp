@@ -69,10 +69,9 @@ ofxLaunchControlXL::ofxLaunchControlXL(){
     knobsCC[31] = 84;
 }
 
-void ofxLaunchControlXL::setup(  ){
-	int id = -1;
+void ofxLaunchControlXL::setup( int id, int channel ){
 	const auto & ports = midiIn.getInPortList();
-	string target = "Launch Control XL";
+  string target = "LCXL3";
 	for( size_t i=0; i<ports.size(); ++i){
 		string cut = ports[i].substr(0, target.length());
 		if( target.compare(cut)==0 ){
