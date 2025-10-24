@@ -23,7 +23,7 @@ public:
     void dragEvent(ofDragInfo dragInfo);
     void gotMessage(ofMessage msg);
 
-    ofxLaunchControl lc;
+    ofxLaunchControlXL lc;
 
     ofxPanel gui;
     ofParameter<bool> testBool;

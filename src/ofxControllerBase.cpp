@@ -16,7 +16,7 @@ void ofxControllerBase::listDevices(){
 }
 
 
-void ofxControllerBase::setup(int port, int channel){
+bool ofxControllerBase::setup(int port, int channel){
 
     this->channel = channel;
     buttonsColor = ofxLCLeds::Red;
@@ -27,9 +27,9 @@ void ofxControllerBase::setup(int port, int channel){
     midiIn.openPort(port);
 
     if(midiIn.isOpen()){
-        midiIn.addListener(this);
-        leds.openPort(port);
-        ofLogNotice() << "ofxLaunchControls: " << name << " activated!";
+      midiIn.addListener(this);
+      leds.openPort(port);
+      ofLogNotice() << "ofxLaunchControls: " << name << " activated!";
     }
 
     bEasing = false;
@@ -41,6 +41,8 @@ void ofxControllerBase::setup(int port, int channel){
 
     int prio = 0; // OF_EVENT_PRIORITY_BEFORE_APP
     ofAddListener(ofEvents().update, this, &ofxControllerBase::update, prio);
+  
+  return true;
 }
 
 
@@ -191,6 +193,7 @@ void ofxControllerBase::newMidiMessage(ofxMidiMessage & msg){
 }
 
 void ofxControllerBase::processMessage(const ofxMidiMessage & msg){
+  ofLogVerbose() << "ofxControllerBase::processMessage MIDI message received: " << msg.status << " control: " << msg.control << " value: " << msg.value << " pitch: " << msg.pitch;
 
     bUpdate = true;
 

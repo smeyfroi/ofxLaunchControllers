@@ -27,7 +27,7 @@ class ofxControllerBase : public ofxMidiListener {
 
         ofxControllerBase();
         void listDevices();
-        void setup(int port, int channel = 9);
+        bool setup(int port, int channel = 9);
 
 
         void button(int index, ofParameter <bool> & param, bool momentary = false);

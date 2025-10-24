@@ -2,6 +2,7 @@
 
 //--------------------------------------------------------------
 void ofApp::setup(){
+  ofSetLogLevel(OF_LOG_VERBOSE); //OF_LOG_NOTICE);
     
     // gui setup -------------------------------------
     gui.setup("", "settings.xml", 20, 20 );
@@ -28,10 +29,11 @@ void ofApp::setup(){
     lc.momentary( 1, testFloat0, 0.2f, 1.1f ); 
     lc.toggle( 2, testInt0, 5, 42 );
     
-    // index for the knobs are 0-15
+    // index for the knobs are 0-31
+    // where 24-31 are the faders
     lc.knob( 0, testFloat1 ); // automatically mapped to ofParameter range
-    lc.knob( 8, testInt1, 0, 255 ); // with value range
-    lc.knob( 8, testInt3, 20, 90 ); // multiple 
+    lc.knob( 24, testInt1, 0, 255 ); // with value range
+    lc.knob( 24, testInt3, 20, 90 ); // multiple
 
     lc.knob3( 5, testVec3, glm::vec3(0), glm::vec3(100)); // multiple
 
