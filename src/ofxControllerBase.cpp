@@ -305,6 +305,16 @@ ofxControllerBase::Binding::Binding(const Binding & other){
     z1 = other.z1;
 }
 
+void ofxControllerBase::button(int index, std::function<void()> buttonListener){
+  if(midiIn.isOpen()){
+    if(index >= 0 && index < (int)buttons.size()){
+      buttons[index].buttonListener = buttonListener;
+    }else{
+      ofLogError() << "ofxLaunchControls: wrong indices for button(), momentary() or toggle() function, binding ignored";
+    }
+  }
+}
+
 void ofxControllerBase::button(int index, ofParameter <bool> & param, bool momentary){
     if(midiIn.isOpen()){
         if(index >= 0 && index < (int)buttons.size()){
