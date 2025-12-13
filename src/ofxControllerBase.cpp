@@ -1,6 +1,7 @@
 
 #include "ofxControllerBase.h"
 #include "ofEvent.h"
+#include <unordered_set>
 
 ofxControllerBase::ofxControllerBase(){
 	name = "launch control";
@@ -9,6 +10,10 @@ ofxControllerBase::ofxControllerBase(){
     written = 0;
     lastRead = written;
     buttonLedsEnabled = true;
+}
+
+ofxControllerBase::~ofxControllerBase(){
+    shutdown();
 }
 
 void ofxControllerBase::listDevices(){
@@ -626,8 +631,105 @@ void ofxControllerBase::easing(float speed){
 }
 
 
-void ofxControllerBase::close(){
-	clearLeds();
+void ofxControllerBase::removeParameterListeners(){
+    std::unordered_set<ofParameter<bool>*> boolParams;
+    std::unordered_set<ofParameter<float>*> floatParams;
+    std::unordered_set<ofParameter<int>*> intParams;
+
+    for(auto & b : buttons){
+        switch(b.typeCode){
+            case LC_TYPECODE_BOOL:
+                if(b.pParamb) boolParams.insert(b.pParamb);
+                break;
+            case LC_TYPECODE_FLOAT:
+                if(b.pParamf) floatParams.insert(b.pParamf);
+                break;
+            case LC_TYPECODE_INT:
+                if(b.pParami) intParams.insert(b.pParami);
+                break;
+            default:
+                break;
+        }
+    }
+
+    for(auto & r : radios){
+        if(r.pParami) intParams.insert(r.pParami);
+    }
+
+    for(auto * p : boolParams){
+        p->removeListener(this, &ofxControllerBase::buttonChangedB);
+    }
+    for(auto * p : floatParams){
+        p->removeListener(this, &ofxControllerBase::buttonChangedF);
+    }
+    for(auto * p : intParams){
+        // `int` params can be button-bound or radio-bound.
+        p->removeListener(this, &ofxControllerBase::buttonChangedI);
+        p->removeListener(this, &ofxControllerBase::radioChanged);
+    }
+}
+
+void ofxControllerBase::clearBindings(){
+    // Keep the fixed MIDI mapping (controlNum / knobsCC), clear only bindings.
+    for(auto & b : buttons){
+        b.typeCode = LC_TYPECODE_UNASSIGNED;
+        b.bUpdate.store(false);
+        b.buttonMode = 0;
+
+        b.pParamv3 = nullptr;
+        b.pParamf = nullptr;
+        b.pParami = nullptr;
+        b.pParamb = nullptr;
+        b.buttonListener = nullptr;
+
+        b.value.store(0.0f);
+        b.values[0].store(0.0f);
+        b.values[1].store(0.0f);
+        b.values[2].store(0.0f);
+
+        b.bActive.store(false);
+
+        b.minf = 0.0f;
+        b.maxf = 0.0f;
+        b.mini = 0;
+        b.maxi = 0;
+        b.minv3 = glm::vec3(0.0f);
+        b.maxv3 = glm::vec3(0.0f);
+
+        b.radioGroup = -1;
+        b.radioValue = -1;
+
+        b.z1 = 0.0f;
+        b.z3 = glm::vec3(0.0f);
+    }
+
+    for(auto & k : knobs){
+        k.clear();
+    }
+
+    radios.clear();
+}
+
+void ofxControllerBase::shutdown(){
+    int prio = 0; // OF_EVENT_PRIORITY_BEFORE_APP
+    ofRemoveListener(ofEvents().update, this, &ofxControllerBase::update, prio);
+
+    removeParameterListeners();
+
+    // Stop new MIDI callbacks before clearing state.
+    midiIn.removeListener(this);
     midiIn.closePort();
-	midiIn.removeListener(this);
+
+    clearLeds();
+    leds.closePort();
+
+    bUpdate = false;
+    written = 0;
+    lastRead = 0;
+
+    clearBindings();
+}
+
+void ofxControllerBase::close(){
+    shutdown();
 }

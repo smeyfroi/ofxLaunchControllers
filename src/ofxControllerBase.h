@@ -16,6 +16,9 @@ private:
   struct RadioGroup;
   
 public:
+  ofxControllerBase();
+  virtual ~ofxControllerBase();
+
   enum TypeCode {
     LC_TYPECODE_UNASSIGNED = 0,
     LC_TYPECODE_BOOL = 1,
@@ -25,9 +28,12 @@ public:
     LC_TYPECODE_VECTOR3 = 5
   };
   
-  ofxControllerBase();
   void listDevices();
   bool setup(int port, int channel = 9);
+
+  // Fully unregisters all listeners and clears bindings.
+  // Safe to call before re-binding, or from the destructor.
+  void shutdown();
   
   void button(int index, std::function<void()> buttonListener);
   void button(int index, ofParameter <bool> & param, bool momentary = false);
@@ -75,10 +81,13 @@ protected:
   
 private:
   void update(ofEventArgs & events); // update writes changes, use atomics for thread safe control
-  
+
   void newMidiMessage(ofxMidiMessage & msg);
-  
+
   void processMessage(const ofxMidiMessage & msg);
+
+  void removeParameterListeners();
+  void clearBindings();
   
   std::atomic <bool> buttonLedsEnabled;
   
