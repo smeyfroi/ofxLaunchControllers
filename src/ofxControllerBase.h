@@ -52,6 +52,9 @@ public:
   void toggle(int index, ofParameter <int> & param, int min, int max);
   void toggle(int index, ofParameter <float> & param);
   void toggle(int index, ofParameter <int> & param);
+
+  // MIDI CC "button" mapping: value > 64 => true.
+  void toggleButton(int controlId, ofParameter <bool> & param);
   
   void radio(int indexMin, int indexMax, ofParameter <int> & param, int color = ofxLCLeds::Red, int offColor = ofxLCLeds::Off);
   
@@ -59,6 +62,9 @@ public:
   void knob(int index, ofParameter <int> & param, int min, int max);
   void knob(int index, ofParameter <float> & param);
   void knob(int index, ofParameter <int> & param);
+
+  // Clears all bindings for a given knob index.
+  void clearKnob(int index);
   
   void knob3(int index, ofParameter <glm::vec3> & param, glm::vec3 min, glm::vec3 max);
   void knob3(int index, ofParameter <glm::vec3> & param);
@@ -73,6 +79,7 @@ public:
   
 protected:
   vector <Binding> buttons;
+  vector <Binding> ccButtons;
   vector <int>     knobsCC;
   string name;
   

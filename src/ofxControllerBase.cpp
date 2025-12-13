@@ -92,6 +92,16 @@ void ofxControllerBase::update(ofEventArgs & events){
             }
         }
 
+        // cc "toggle buttons" update
+        for(size_t b = 0; b < ccButtons.size(); ++b){
+            if(ccButtons[b].bUpdate){
+                if(ccButtons[b].typeCode == LC_TYPECODE_BOOL && ccButtons[b].pParamb){
+                    *(ccButtons[b].pParamb) = ccButtons[b].bActive;
+                }
+                ccButtons[b].bUpdate = false;
+            }
+        }
+
         // radio buttons update
         for(size_t i = 0; i < radios.size(); ++i){
             if(radios[i].bUpdate){
@@ -202,33 +212,42 @@ void ofxControllerBase::processMessage(const ofxMidiMessage & msg){
 
     bUpdate = true;
 
-    switch(msg.status){
-     case MIDI_CONTROL_CHANGE:
-         for(size_t i = 0; i < knobs.size(); ++i){
-             for(size_t k = 0; k < knobs[i].size(); k++){
-                 if(knobs[i][k].typeCode == LC_TYPECODE_VECTOR3 && (msg.control >= knobs[i][k].controlNum || msg.control < knobs[i][k].controlNum + 3)){
-//                     if(!knobs[i][k].bUpdate.load()) {
-                        int index = msg.control - knobs[i][k].controlNum;
-                        float min = glm::value_ptr(knobs[i][k].minv3)[index];
-                        float max = glm::value_ptr(knobs[i][k].maxv3)[index];
-                        knobs[i][k].values[index].store(ofMap(msg.value, 0, 127, min, max));
-                        knobs[i][k].bUpdate.store(true);
-//                     }
-                 }else if(msg.control == knobs[i][k].controlNum && knobs[i][k].typeCode != LC_TYPECODE_UNASSIGNED){
-                     switch(knobs[i][k].typeCode){
-                      case LC_TYPECODE_FLOAT:
-                          knobs[i][k].value = ofMap(msg.value, 0, 127, knobs[i][k].minf, knobs[i][k].maxf);
-                          break;
+     switch(msg.status){
+      case MIDI_CONTROL_CHANGE:
+          for(size_t i = 0; i < knobs.size(); ++i){
+              for(size_t k = 0; k < knobs[i].size(); k++){
+                  if(knobs[i][k].typeCode == LC_TYPECODE_VECTOR3 && (msg.control >= knobs[i][k].controlNum || msg.control < knobs[i][k].controlNum + 3)){
+ //                     if(!knobs[i][k].bUpdate.load()) {
+                         int index = msg.control - knobs[i][k].controlNum;
+                         float min = glm::value_ptr(knobs[i][k].minv3)[index];
+                         float max = glm::value_ptr(knobs[i][k].maxv3)[index];
+                         knobs[i][k].values[index].store(ofMap(msg.value, 0, 127, min, max));
+                         knobs[i][k].bUpdate.store(true);
+ //                     }
+                  }else if(msg.control == knobs[i][k].controlNum && knobs[i][k].typeCode != LC_TYPECODE_UNASSIGNED){
+                      switch(knobs[i][k].typeCode){
+                       case LC_TYPECODE_FLOAT:
+                           knobs[i][k].value = ofMap(msg.value, 0, 127, knobs[i][k].minf, knobs[i][k].maxf);
+                           break;
 
-                      case LC_TYPECODE_INT:
-                          knobs[i][k].value = ofMap(msg.value, 0, 127, knobs[i][k].mini, knobs[i][k].maxi);
-                          break;
-                     }
-                     knobs[i][k].bUpdate = true;
-                 }
-             }
-         }
-         break;
+                       case LC_TYPECODE_INT:
+                           knobs[i][k].value = ofMap(msg.value, 0, 127, knobs[i][k].mini, knobs[i][k].maxi);
+                           break;
+                      }
+                      knobs[i][k].bUpdate = true;
+                  }
+              }
+          }
+
+          for(size_t b = 0; b < ccButtons.size(); ++b){
+              if(msg.control == ccButtons[b].controlNum && ccButtons[b].typeCode == LC_TYPECODE_BOOL){
+                  ccButtons[b].bActive = msg.value > 64;
+                  ccButtons[b].bUpdate = true;
+              }
+          }
+
+          break;
+
 
      case MIDI_NOTE_ON:
          for(size_t b = 0; b < buttons.size(); ++b){
@@ -558,6 +577,14 @@ void ofxControllerBase::knob(int index, ofParameter <int> & param){
     knob(index, param, param.getMin(), param.getMax());
 }
 
+void ofxControllerBase::clearKnob(int index){
+    if(index >= 0 && index < (int)knobs.size()){
+        knobs[index].clear();
+    }else{
+        ofLogError() << "ofxLaunchControls: wrong index in clearKnob() function, binding ignored";
+    }
+}
+
 void ofxControllerBase::button(int index, ofParameter <float> & param, bool momentary){
     button(index, param, param.getMin(), param.getMax(), momentary);
 }
@@ -595,6 +622,19 @@ void ofxControllerBase::toggle(int index, ofParameter <float> & param){
 }
 void ofxControllerBase::toggle(int index, ofParameter <int> & param){
     button(index, param, false);
+}
+
+void ofxControllerBase::toggleButton(int controlId, ofParameter <bool> & param){
+    if(midiIn.isOpen()){
+        ccButtons.emplace_back();
+        ccButtons.back().controlNum = controlId;
+        ccButtons.back().typeCode = LC_TYPECODE_BOOL;
+        ccButtons.back().pParamb = &param;
+        ccButtons.back().bActive = param.get();
+        ccButtons.back().bUpdate = false;
+
+        param.addListener(this, &ofxControllerBase::buttonChangedB);
+    }
 }
 
 void ofxControllerBase::radioChanged(int & value){
@@ -652,6 +692,10 @@ void ofxControllerBase::removeParameterListeners(){
         }
     }
 
+    for(auto & b : ccButtons){
+        if(b.typeCode == LC_TYPECODE_BOOL && b.pParamb) boolParams.insert(b.pParamb);
+    }
+
     for(auto & r : radios){
         if(r.pParami) intParams.insert(r.pParami);
     }
@@ -702,6 +746,8 @@ void ofxControllerBase::clearBindings(){
         b.z1 = 0.0f;
         b.z3 = glm::vec3(0.0f);
     }
+
+    ccButtons.clear();
 
     for(auto & k : knobs){
         k.clear();

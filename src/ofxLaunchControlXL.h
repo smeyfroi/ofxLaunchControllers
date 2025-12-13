@@ -11,4 +11,6 @@ public:
   void fader( int index, ofParameter<int> & param, int min, int max );
   void fader( int index, ofParameter<float> & param );
   void fader( int index, ofParameter<int> & param );
+
+  void clearFaders();
 };

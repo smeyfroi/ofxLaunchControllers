@@ -118,3 +118,9 @@ void ofxLaunchControlXL::fader( int index, ofParameter<int> & param ){
     ofLogError()<<"ofxLaunchControls: wrong index in fader() function, binding ignored";
   }
 }
+
+void ofxLaunchControlXL::clearFaders(){
+  for(int i = 0; i < 8; ++i){
+    clearKnob(i + 24);
+  }
+}
