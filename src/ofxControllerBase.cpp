@@ -1,6 +1,8 @@
 
 #include "ofxControllerBase.h"
 #include "ofEvent.h"
+
+#include <cmath>
 #include <unordered_set>
 
 ofxControllerBase::ofxControllerBase(){
@@ -224,18 +226,46 @@ void ofxControllerBase::processMessage(const ofxMidiMessage & msg){
                          knobs[i][k].values[index].store(ofMap(msg.value, 0, 127, min, max));
                          knobs[i][k].bUpdate.store(true);
  //                     }
-                  }else if(msg.control == knobs[i][k].controlNum && knobs[i][k].typeCode != LC_TYPECODE_UNASSIGNED){
-                      switch(knobs[i][k].typeCode){
-                       case LC_TYPECODE_FLOAT:
-                           knobs[i][k].value = ofMap(msg.value, 0, 127, knobs[i][k].minf, knobs[i][k].maxf);
-                           break;
+                   }else if(msg.control == knobs[i][k].controlNum && knobs[i][k].typeCode != LC_TYPECODE_UNASSIGNED){
+                       auto & binding = knobs[i][k];
 
-                       case LC_TYPECODE_INT:
-                           knobs[i][k].value = ofMap(msg.value, 0, 127, knobs[i][k].mini, knobs[i][k].maxi);
-                           break;
-                      }
-                      knobs[i][k].bUpdate = true;
-                  }
+                       // Soft takeover: ignore knob changes until the physical control
+                       // reaches the current parameter value (within tolerance).
+                       if(binding.pickupEnabled && binding.pickupArmed){
+                           float currentMidi = 0.0f;
+                           switch(binding.typeCode){
+                            case LC_TYPECODE_FLOAT:
+                                if(binding.pParamf){
+                                    currentMidi = ofMap(*(binding.pParamf), binding.minf, binding.maxf, 0.0f, 127.0f, true);
+                                }
+                                break;
+                            case LC_TYPECODE_INT:
+                                if(binding.pParami){
+                                    currentMidi = ofMap((float)*(binding.pParami), (float)binding.mini, (float)binding.maxi, 0.0f, 127.0f, true);
+                                }
+                                break;
+                            default:
+                                break;
+                           }
+
+                           if(std::abs((float)msg.value - currentMidi) > binding.pickupTolerance){
+                               continue;
+                           }
+
+                           binding.pickupArmed = false;
+                       }
+
+                       switch(binding.typeCode){
+                        case LC_TYPECODE_FLOAT:
+                            binding.value = ofMap(msg.value, 0, 127, binding.minf, binding.maxf);
+                            break;
+ 
+                        case LC_TYPECODE_INT:
+                            binding.value = ofMap(msg.value, 0, 127, binding.mini, binding.maxi);
+                            break;
+                       }
+                       binding.bUpdate = true;
+                   }
               }
           }
 
@@ -296,18 +326,34 @@ ofxControllerBase::Binding::Binding(){
     typeCode = LC_TYPECODE_UNASSIGNED;
     bUpdate = false;
     buttonMode = 0;
+
+    pParamv3 = nullptr;
     pParamf = nullptr;
     pParami = nullptr;
     pParamb = nullptr;
+    buttonListener = nullptr;
+
     value = 0;
+    values[0] = 0.0f;
+    values[1] = 0.0f;
+    values[2] = 0.0f;
+
+    pickupEnabled = false;
+    pickupArmed = false;
+    pickupTolerance = 2;
+
     minf = 0.0f;
     maxf = 0.0f;
     mini = 0;
     maxi = 0;
+    minv3 = glm::vec3(0.0f);
+    maxv3 = glm::vec3(0.0f);
+
     bActive = false;
     radioGroup = -1;
     radioValue = -1;
     z1 = 0.0f;
+    z3 = glm::vec3(0.0f);
 }
 
 ofxControllerBase::Binding::Binding(const Binding & other){
@@ -315,18 +361,34 @@ ofxControllerBase::Binding::Binding(const Binding & other){
     typeCode = other.typeCode;
     bUpdate.store(other.bUpdate);
     buttonMode = other.buttonMode;
+
+    pParamv3 = other.pParamv3;
     pParamf = other.pParamf;
     pParami = other.pParami;
     pParamb = other.pParamb;
+    buttonListener = other.buttonListener;
+
     value.store(other.value);
+    values[0].store(other.values[0]);
+    values[1].store(other.values[1]);
+    values[2].store(other.values[2]);
+
+    pickupEnabled = other.pickupEnabled;
+    pickupArmed = other.pickupArmed;
+    pickupTolerance = other.pickupTolerance;
+
     minf = other.minf;
     maxf = other.maxf;
     mini = other.mini;
     maxi = other.maxi;
+    minv3 = other.minv3;
+    maxv3 = other.maxv3;
+
     bActive.store(other.bActive);
     radioGroup = other.radioGroup;
     radioValue = other.radioValue;
     z1 = other.z1;
+    z3 = other.z3;
 }
 
 void ofxControllerBase::button(int index, std::function<void()> buttonListener){
@@ -549,6 +611,54 @@ void ofxControllerBase::knob(int index, ofParameter <int> & param, int min, int 
     }
 }
 
+void ofxControllerBase::knobPickup(int index, ofParameter <float> & param, float min, float max, int tolerance){
+    if(midiIn.isOpen()){
+        if(index >= 0 && index < (int)knobs.size()){
+            knobs[index].emplace_back();
+            knobs[index].back().controlNum = knobsCC[index];
+            knobs[index].back().typeCode = LC_TYPECODE_FLOAT;
+            knobs[index].back().pParamf = &param;
+            knobs[index].back().maxf = max;
+            knobs[index].back().minf = min;
+            knobs[index].back().value = param;
+            knobs[index].back().z1 = param;
+            knobs[index].back().pickupEnabled = true;
+            knobs[index].back().pickupArmed = true;
+            knobs[index].back().pickupTolerance = tolerance;
+        }else{
+            ofLogError() << "ofxLaunchControls: wrong indices for knobPickup() function, binding ignored";
+        }
+    }
+}
+
+void ofxControllerBase::knobPickup(int index, ofParameter <int> & param, int min, int max, int tolerance){
+    if(midiIn.isOpen()){
+        if(index >= 0 && index < (int)knobs.size()){
+            knobs[index].emplace_back();
+            knobs[index].back().controlNum = knobsCC[index];
+            knobs[index].back().typeCode = LC_TYPECODE_INT;
+            knobs[index].back().pParami = &param;
+            knobs[index].back().maxi = max;
+            knobs[index].back().mini = min;
+            knobs[index].back().value = (float)param;
+            knobs[index].back().z1 = (float)param;
+            knobs[index].back().pickupEnabled = true;
+            knobs[index].back().pickupArmed = true;
+            knobs[index].back().pickupTolerance = tolerance;
+        }else{
+            ofLogError() << "ofxLaunchControls: wrong indices for knobPickup() function, binding ignored";
+        }
+    }
+}
+
+void ofxControllerBase::knobPickup(int index, ofParameter <float> & param, int tolerance){
+    knobPickup(index, param, param.getMin(), param.getMax(), tolerance);
+}
+
+void ofxControllerBase::knobPickup(int index, ofParameter <int> & param, int tolerance){
+    knobPickup(index, param, param.getMin(), param.getMax(), tolerance);
+}
+
 void ofxControllerBase::knob3(int index, ofParameter <glm::vec3> & param, glm::vec3 min, glm::vec3 max){
     if(midiIn.isOpen()){
         if(index >= 0 && index < (int)knobs.size() - 2){
@@ -731,7 +841,12 @@ void ofxControllerBase::clearBindings(){
         b.values[1].store(0.0f);
         b.values[2].store(0.0f);
 
+        b.pickupEnabled = false;
+        b.pickupArmed = false;
+        b.pickupTolerance = 2;
+
         b.bActive.store(false);
+
 
         b.minf = 0.0f;
         b.maxf = 0.0f;

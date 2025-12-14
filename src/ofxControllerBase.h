@@ -63,6 +63,13 @@ public:
   void knob(int index, ofParameter <float> & param);
   void knob(int index, ofParameter <int> & param);
 
+  // "Soft takeover" / pickup: ignores incoming knob movements until the
+  // physical control reaches the current parameter value (within tolerance).
+  void knobPickup(int index, ofParameter <float> & param, float min, float max, int tolerance = 2);
+  void knobPickup(int index, ofParameter <int> & param, int min, int max, int tolerance = 2);
+  void knobPickup(int index, ofParameter <float> & param, int tolerance = 2);
+  void knobPickup(int index, ofParameter <int> & param, int tolerance = 2);
+
   // Clears all bindings for a given knob index.
   void clearKnob(int index);
   
@@ -138,7 +145,12 @@ private:
     
     std::atomic <float> value;
     std::atomic <float> values[3];
-    
+
+    // Soft takeover / pickup.
+    bool pickupEnabled;
+    bool pickupArmed;
+    int pickupTolerance;
+
     std::atomic <bool> bActive;
     float minf;
     float maxf;
