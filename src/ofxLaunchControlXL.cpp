@@ -72,19 +72,59 @@ bool ofxLaunchControlXL::setup( int id, int channel ){
   string target = "LCXL3";
   for( size_t i=0; i<ports.size(); ++i){
     string cut = ports[i].substr(0, target.length());
-    if( target.compare(cut)==0 ){
+    // Skip DAW ports - we want the main port for Custom Mode
+    string portLower = ofToLower(ports[i]);
+    if( target.compare(cut)==0 && portLower.find("daw") == string::npos ){
       id = i;
       break;
     }
   }
   
   if(id>=0){
-    ofxControllerBase::setup( id );
+    ofxControllerBase::setup( id, channel );
+    dawModeActive = false;
     return true;
   }
   
   ofLogError()<<"ofxLaunchControls: automatic setup error, Launch Control XL not found";
   return false;
+}
+
+bool ofxLaunchControlXL::setupDawMode( int channel ){
+  const auto & ports = midiIn.getInPortList();
+  
+  // Find the DAW input port
+  int dawPortIndex = -1;
+  for( size_t i=0; i<ports.size(); ++i){
+    string portLower = ofToLower(ports[i]);
+    bool isLCXL3 = (portLower.find("lcxl3") != string::npos) ||
+                   (portLower.find("launch control xl") != string::npos);
+    bool isDaw = portLower.find("daw") != string::npos;
+    
+    if( isLCXL3 && isDaw ){
+      dawPortIndex = i;
+      ofLogNotice("ofxLaunchControlXL") << "Found DAW input port: " << ports[i] << " at index " << i;
+      break;
+    }
+  }
+  
+  if(dawPortIndex < 0){
+    ofLogError("ofxLaunchControlXL") << "DAW input port not found";
+    return false;
+  }
+  
+  // Setup base controller with DAW port
+  ofxControllerBase::setup( dawPortIndex, channel );
+  
+  // Setup LED controller (which also opens DAW output port and enables DAW mode)
+  leds = std::make_unique<ofxLaunchControlXL3Leds>();
+  if (!leds->setup(true)) {
+    ofLogWarning("ofxLaunchControlXL") << "LED controller setup failed, but MIDI input may still work";
+  }
+  
+  dawModeActive = true;
+  ofLogNotice("ofxLaunchControlXL") << "DAW mode setup complete";
+  return true;
 }
 
 void ofxLaunchControlXL::fader( int index, ofParameter<float> & param, float min, float max ){
@@ -124,3 +164,5 @@ void ofxLaunchControlXL::clearFaders(){
     clearKnob(i + 24);
   }
 }
+
+

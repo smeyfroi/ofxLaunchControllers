@@ -236,12 +236,17 @@ void ofxControllerBase::processMessage(const ofxMidiMessage & msg){
                            switch(binding.typeCode){
                             case LC_TYPECODE_FLOAT:
                                 if(binding.pParamf){
-                                    currentMidi = ofMap(*(binding.pParamf), binding.minf, binding.maxf, 0.0f, 127.0f, true);
+                                    // Map without clamping first, then clamp to valid MIDI range.
+                                    // This allows values outside min/max to still pickup at endpoints.
+                                    currentMidi = ofMap(*(binding.pParamf), binding.minf, binding.maxf, 0.0f, 127.0f, false);
+                                    currentMidi = ofClamp(currentMidi, 0.0f, 127.0f);
                                 }
                                 break;
                             case LC_TYPECODE_INT:
                                 if(binding.pParami){
-                                    currentMidi = ofMap((float)*(binding.pParami), (float)binding.mini, (float)binding.maxi, 0.0f, 127.0f, true);
+                                    // Map without clamping first, then clamp to valid MIDI range.
+                                    currentMidi = ofMap((float)*(binding.pParami), (float)binding.mini, (float)binding.maxi, 0.0f, 127.0f, false);
+                                    currentMidi = ofClamp(currentMidi, 0.0f, 127.0f);
                                 }
                                 break;
                             default:
