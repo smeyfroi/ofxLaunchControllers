@@ -63,6 +63,19 @@ void ofxLaunchControlXL3Display::setStationary(const std::string& line1, const s
   configure(kTargetStationary, kArrangementTrigger);
 }
 
+void ofxLaunchControlXL3Display::setStationary3Line(const std::string& title, const std::string& name, const std::string& value) {
+  // Configure 3-line arrangement (Title + Name + Value)
+  configure(kTargetStationary, kArrangement3Line);
+  // Set field 0 (Title)
+  setText(kTargetStationary, 0, title);
+  // Set field 1 (Name)
+  setText(kTargetStationary, 1, name);
+  // Set field 2 (Value)
+  setText(kTargetStationary, 2, value);
+  // Trigger display
+  configure(kTargetStationary, kArrangementTrigger);
+}
+
 void ofxLaunchControlXL3Display::showTemporary(const std::string& name, const std::string& value) {
   // Configure 2-line arrangement
   configure(kTargetTemporary, kArrangement2Line);

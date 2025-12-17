@@ -38,6 +38,12 @@ public:
   void setStationary(const std::string& line1, const std::string& line2);
 
   /**
+   * Set the stationary (permanent) display content with 3 lines.
+   * Uses 3-line arrangement: Title + Name + Value.
+   */
+  void setStationary3Line(const std::string& title, const std::string& name, const std::string& value);
+
+  /**
    * Show a temporary overlay display.
    * Uses 2-line arrangement: name on top, value on bottom.
    * Auto-dismisses after device timeout setting.
