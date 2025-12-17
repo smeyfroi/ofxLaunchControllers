@@ -138,6 +138,12 @@ public:
    */
   void clearAllLEDs();
 
+  /**
+   * Get a pointer to the MIDI output for sharing with other controllers (e.g., display).
+   * Returns nullptr if not connected.
+   */
+  ofxMidiOut* getMidiOut() { return connected ? &midiOut : nullptr; }
+
 private:
   void enableDawMode();
   void disableDawMode();
