@@ -94,3 +94,10 @@ void ofxLaunchControlXL3Display::clearStationary() {
 void ofxLaunchControlXL3Display::clearTemporary() {
   configure(kTargetTemporary, kArrangementCancel);
 }
+
+void ofxLaunchControlXL3Display::cancelControlDisplay(uint8_t target) {
+  // Configure with default arrangement but WITHOUT auto-display flags.
+  // Using arrangement 4 (Name + Numeric Value) with bits 5-6 cleared
+  // prevents the device from showing temporary overlays when controls are moved.
+  configure(target, kArrangementNumeric);
+}

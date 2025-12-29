@@ -19,11 +19,16 @@ public:
   static constexpr uint8_t kTargetStationary = 0x35;  // Permanent display
   static constexpr uint8_t kTargetTemporary = 0x36;   // Overlay display
 
-  // Display arrangements
+  // Display arrangements (bits 0-4)
   static constexpr uint8_t kArrangementCancel = 0x00;
   static constexpr uint8_t kArrangement2Line = 0x01;   // Name + Value
   static constexpr uint8_t kArrangement3Line = 0x02;   // Title + Name + Value
+  static constexpr uint8_t kArrangementNumeric = 0x04; // Name + Numeric Value (default)
   static constexpr uint8_t kArrangementTrigger = 0x7F;
+
+  // Auto-display flags (bits 5-6, set by default on device)
+  static constexpr uint8_t kAutoDisplayOnValueChange = 0x40;  // Bit 6
+  static constexpr uint8_t kAutoDisplayOnTouch = 0x20;        // Bit 5
 
   /**
    * Setup the display controller with a shared MIDI output.
@@ -55,6 +60,14 @@ public:
    */
   void clearStationary();
   void clearTemporary();
+
+  /**
+   * Cancel/disable auto-temp-display for a specific control.
+   * Use this to prevent the device from showing temporary overlays
+   * when faders, encoders, or buttons are touched/moved.
+   * @param target Control index (5-12 for faders, 13-36 for encoders, 37-52 for buttons)
+   */
+  void cancelControlDisplay(uint8_t target);
 
 private:
   void configure(uint8_t target, uint8_t config);
